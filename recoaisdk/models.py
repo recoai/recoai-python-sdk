@@ -13,20 +13,24 @@
 #     result = detail_product_view_from_dict(json.loads(json_string))
 #     result = home_page_view_from_dict(json.loads(json_string))
 #     result = image_interaction_from_dict(json.loads(json_string))
+#     result = remove_item_from_dict(json.loads(json_string))
+#     result = upsert_item_from_dict(json.loads(json_string))
 #     result = list_view_from_dict(json.loads(json_string))
+#     result = offline_recommendations_remove_from_dict(json.loads(json_string))
+#     result = offline_recommendations_upsert_from_dict(json.loads(json_string))
 #     result = other_interaction_from_dict(json.loads(json_string))
 #     result = page_visit_from_dict(json.loads(json_string))
+#     result = placement_remove_from_dict(json.loads(json_string))
+#     result = placement_upsert_from_dict(json.loads(json_string))
 #     result = purchase_complete_from_dict(json.loads(json_string))
 #     result = rate_product_from_dict(json.loads(json_string))
 #     result = reco_request_from_dict(json.loads(json_string))
 #     result = reco_show_from_dict(json.loads(json_string))
 #     result = remove_from_cart_from_dict(json.loads(json_string))
 #     result = remove_from_list_from_dict(json.loads(json_string))
-#     result = remove_item_from_dict(json.loads(json_string))
 #     result = cart_page_view_from_dict(json.loads(json_string))
 #     result = sort_items_from_dict(json.loads(json_string))
 #     result = unknown_event_from_dict(json.loads(json_string))
-#     result = upsert_item_from_dict(json.loads(json_string))
 
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List, Union, TypeVar, Callable, Type, cast
@@ -130,19 +134,23 @@ class EventType(Enum):
     DETAIL_PRODUCT_VIEW = "DetailProductView"
     HOME_PAGE_VIEW = "HomePageView"
     IMAGE_INTERACTION = "ImageInteraction"
+    ITEM_REMOVE = "ItemRemove"
+    ITEM_UPSERT = "ItemUpsert"
     LIST_VIEW = "ListView"
+    OFFLINE_RECOMMENDATIONS_REMOVE = "OfflineRecommendationsRemove"
+    OFFLINE_RECOMMENDATIONS_UPSERT = "OfflineRecommendationsUpsert"
     OTHER_INTERACTION = "OtherInteraction"
     PAGE_VISIT = "PageVisit"
+    PLACEMENT_REMOVE = "PlacementRemove"
+    PLACEMENT_UPSERT = "PlacementUpsert"
     PURCHASE_COMPLETE = "PurchaseComplete"
     RATE_PRODUCT = "RateProduct"
     RECO_REQUEST = "RecoRequest"
     RECO_SHOW = "RecoShow"
     REMOVE_FROM_CART = "RemoveFromCart"
     REMOVE_FROM_LIST = "RemoveFromList"
-    REMOVE_ITEM = "RemoveItem"
     SORT_ITEMS = "SortItems"
     UNKNOWN_EVENT = "UnknownEvent"
-    UPSERT_ITEM = "UpsertItem"
 
 
 class Currency(Enum):
@@ -704,6 +712,174 @@ class ImageInteraction:
 
 
 @dataclass
+class RemoveItem:
+    event_time: int
+    event_type: EventType
+    item_id: str
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'RemoveItem':
+        assert isinstance(obj, dict)
+        event_time = from_int(obj.get("event_time"))
+        event_type = EventType(obj.get("event_type"))
+        item_id = from_str(obj.get("item_id"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        return RemoveItem(event_time, event_type, item_id, user_info, event_detail)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_time"] = from_int(self.event_time)
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["item_id"] = from_str(self.item_id)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        return result
+
+
+@dataclass
+class ExactPrice:
+    display_price: float
+    original_price: float
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'ExactPrice':
+        assert isinstance(obj, dict)
+        display_price = from_float(obj.get("display_price"))
+        original_price = from_float(obj.get("original_price"))
+        return ExactPrice(display_price, original_price)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["display_price"] = to_float(self.display_price)
+        result["original_price"] = to_float(self.original_price)
+        return result
+
+
+@dataclass
+class Image:
+    height: str
+    uri: str
+    width: str
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'Image':
+        assert isinstance(obj, dict)
+        height = from_str(obj.get("height"))
+        uri = from_str(obj.get("uri"))
+        width = from_str(obj.get("width"))
+        return Image(height, uri, width)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["height"] = from_str(self.height)
+        result["uri"] = from_str(self.uri)
+        result["width"] = from_str(self.width)
+        return result
+
+
+class StockState(Enum):
+    BACK_ORDER = "BackOrder"
+    IN_STOCK = "InStock"
+    OUT_OF_STOCK = "OutOfStock"
+    PRE_ORDER = "PreOrder"
+
+
+@dataclass
+class ProductDetails:
+    currency_code: Currency
+    exact_price: ExactPrice
+    id: str
+    stock_state: StockState
+    title: str
+    attributes: Optional[Dict[str, str]] = None
+    available_quantity: Optional[int] = None
+    canonical_product_uri: Optional[str] = None
+    categorical_attributes: Optional[Dict[str, str]] = None
+    categories: Optional[List[List[str]]] = None
+    costs: Optional[Dict[str, float]] = None
+    description: Optional[str] = None
+    images: Optional[List[Image]] = None
+    item_group_id: Optional[str] = None
+    language_code: Optional[str] = None
+    numeric_attributes: Optional[Dict[str, float]] = None
+    tags: Optional[List[str]] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'ProductDetails':
+        assert isinstance(obj, dict)
+        currency_code = Currency(obj.get("currency_code"))
+        exact_price = ExactPrice.from_dict(obj.get("exact_price"))
+        id = from_str(obj.get("id"))
+        stock_state = StockState(obj.get("stock_state"))
+        title = from_str(obj.get("title"))
+        attributes = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("attributes"))
+        available_quantity = from_union([from_none, from_int], obj.get("available_quantity"))
+        canonical_product_uri = from_union([from_none, from_str], obj.get("canonical_product_uri"))
+        categorical_attributes = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("categorical_attributes"))
+        categories = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], obj.get("categories"))
+        costs = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("costs"))
+        description = from_union([from_none, from_str], obj.get("description"))
+        images = from_union([from_none, lambda x: from_list(Image.from_dict, x)], obj.get("images"))
+        item_group_id = from_union([from_none, from_str], obj.get("item_group_id"))
+        language_code = from_union([from_none, from_str], obj.get("language_code"))
+        numeric_attributes = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("numeric_attributes"))
+        tags = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("tags"))
+        return ProductDetails(currency_code, exact_price, id, stock_state, title, attributes, available_quantity, canonical_product_uri, categorical_attributes, categories, costs, description, images, item_group_id, language_code, numeric_attributes, tags)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["currency_code"] = to_enum(Currency, self.currency_code)
+        result["exact_price"] = to_class(ExactPrice, self.exact_price)
+        result["id"] = from_str(self.id)
+        result["stock_state"] = to_enum(StockState, self.stock_state)
+        result["title"] = from_str(self.title)
+        result["attributes"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.attributes)
+        result["available_quantity"] = from_union([from_none, from_int], self.available_quantity)
+        result["canonical_product_uri"] = from_union([from_none, from_str], self.canonical_product_uri)
+        result["categorical_attributes"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.categorical_attributes)
+        result["categories"] = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], self.categories)
+        result["costs"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.costs)
+        result["description"] = from_union([from_none, from_str], self.description)
+        result["images"] = from_union([from_none, lambda x: from_list(lambda x: to_class(Image, x), x)], self.images)
+        result["item_group_id"] = from_union([from_none, from_str], self.item_group_id)
+        result["language_code"] = from_union([from_none, from_str], self.language_code)
+        result["numeric_attributes"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.numeric_attributes)
+        result["tags"] = from_union([from_none, lambda x: from_list(from_str, x)], self.tags)
+        return result
+
+
+@dataclass
+class UpsertItem:
+    event_time: int
+    event_type: EventType
+    product_details: ProductDetails
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'UpsertItem':
+        assert isinstance(obj, dict)
+        event_time = from_int(obj.get("event_time"))
+        event_type = EventType(obj.get("event_type"))
+        product_details = ProductDetails.from_dict(obj.get("product_details"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        return UpsertItem(event_time, event_type, product_details, user_info, event_detail)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_time"] = from_int(self.event_time)
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["product_details"] = to_class(ProductDetails, self.product_details)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        return result
+
+
+@dataclass
 class ListView:
     event_time: int
     event_type: EventType
@@ -729,6 +905,86 @@ class ListView:
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["list_id"] = from_str(self.list_id)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        return result
+
+
+@dataclass
+class OfflineRecommendationsTypeClass:
+    other_similarity: str
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'OfflineRecommendationsTypeClass':
+        assert isinstance(obj, dict)
+        other_similarity = from_str(obj.get("OtherSimilarity"))
+        return OfflineRecommendationsTypeClass(other_similarity)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["OtherSimilarity"] = from_str(self.other_similarity)
+        return result
+
+
+class OfflineRecommendationsTypeEnum(Enum):
+    IMAGE_SIMILARITY = "ImageSimilarity"
+    TEXT_SIMILARITY = "TextSimilarity"
+
+
+@dataclass
+class OfflineRecommendationsRemove:
+    event_time: int
+    event_type: EventType
+    name: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum]
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'OfflineRecommendationsRemove':
+        assert isinstance(obj, dict)
+        event_time = from_int(obj.get("event_time"))
+        event_type = EventType(obj.get("event_type"))
+        name = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum], obj.get("name"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        return OfflineRecommendationsRemove(event_time, event_type, name, user_info, event_detail)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_time"] = from_int(self.event_time)
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["name"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x)], self.name)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        return result
+
+
+@dataclass
+class OfflineRecommendationsUpsert:
+    event_time: int
+    event_type: EventType
+    matrix: Dict[str, Dict[str, int]]
+    name: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum]
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'OfflineRecommendationsUpsert':
+        assert isinstance(obj, dict)
+        event_time = from_int(obj.get("event_time"))
+        event_type = EventType(obj.get("event_type"))
+        matrix = from_dict(lambda x: from_dict(from_int, x), obj.get("matrix"))
+        name = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum], obj.get("name"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        return OfflineRecommendationsUpsert(event_time, event_type, matrix, name, user_info, event_detail)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_time"] = from_int(self.event_time)
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["matrix"] = from_dict(lambda x: from_dict(from_int, x), self.matrix)
+        result["name"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x)], self.name)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
         return result
@@ -785,6 +1041,126 @@ class PageVisit:
         result: dict = {}
         result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        return result
+
+
+@dataclass
+class PlacementRemove:
+    event_time: int
+    event_type: EventType
+    name: str
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'PlacementRemove':
+        assert isinstance(obj, dict)
+        event_time = from_int(obj.get("event_time"))
+        event_type = EventType(obj.get("event_type"))
+        name = from_str(obj.get("name"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        return PlacementRemove(event_time, event_type, name, user_info, event_detail)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_time"] = from_int(self.event_time)
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["name"] = from_str(self.name)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        return result
+
+
+class RankingStrategy(Enum):
+    DIRICHLET_SAMPLING = "DirichletSampling"
+    RANKING_MODEL = "RankingModel"
+    THOMSPON_SAMPLING = "ThomsponSampling"
+    WEIGHTED_SAMPLE = "WeightedSample"
+
+
+@dataclass
+class GenericStrategyClass:
+    similar_offline: Optional[str] = None
+    query: Optional[str] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'GenericStrategyClass':
+        assert isinstance(obj, dict)
+        similar_offline = from_union([from_str, from_none], obj.get("SimilarOffline"))
+        query = from_union([from_str, from_none], obj.get("Query"))
+        return GenericStrategyClass(similar_offline, query)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["SimilarOffline"] = from_union([from_str, from_none], self.similar_offline)
+        result["Query"] = from_union([from_str, from_none], self.query)
+        return result
+
+
+class GenericStrategyEnum(Enum):
+    ALSO_ADDED_TO_CART = "AlsoAddedToCart"
+    ALSO_PURCHASED = "AlsoPurchased"
+    ALSO_SEEN = "AlsoSeen"
+    CONTENT_MATCHING = "ContentMatching"
+    MOST_PURCHASES = "MostPurchases"
+    MOST_VIEWS = "MostViews"
+    SEEN_IN_SESSION = "SeenInSession"
+    SIMILAR_ATTRIBUTES = "SimilarAttributes"
+    SIMILAR_IMAGE = "SimilarImage"
+    SIMILAR_TEXT = "SimilarText"
+
+
+@dataclass
+class WeightedGenericCandidateRec:
+    strategy: Union[GenericStrategyClass, GenericStrategyEnum]
+    weight: float
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'WeightedGenericCandidateRec':
+        assert isinstance(obj, dict)
+        strategy = from_union([GenericStrategyClass.from_dict, GenericStrategyEnum], obj.get("strategy"))
+        weight = from_float(obj.get("weight"))
+        return WeightedGenericCandidateRec(strategy, weight)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["strategy"] = from_union([lambda x: to_class(GenericStrategyClass, x), lambda x: to_enum(GenericStrategyEnum, x)], self.strategy)
+        result["weight"] = to_float(self.weight)
+        return result
+
+
+@dataclass
+class PlacementUpsert:
+    event_time: int
+    event_type: EventType
+    name: str
+    ranking: RankingStrategy
+    strategies: List[WeightedGenericCandidateRec]
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'PlacementUpsert':
+        assert isinstance(obj, dict)
+        event_time = from_int(obj.get("event_time"))
+        event_type = EventType(obj.get("event_type"))
+        name = from_str(obj.get("name"))
+        ranking = RankingStrategy(obj.get("ranking"))
+        strategies = from_list(WeightedGenericCandidateRec.from_dict, obj.get("strategies"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        return PlacementUpsert(event_time, event_type, name, ranking, strategies, user_info, event_detail)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_time"] = from_int(self.event_time)
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["name"] = from_str(self.name)
+        result["ranking"] = to_enum(RankingStrategy, self.ranking)
+        result["strategies"] = from_list(lambda x: to_class(WeightedGenericCandidateRec, x), self.strategies)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
         return result
@@ -970,47 +1346,6 @@ class RecoRequest:
 
 
 @dataclass
-class ExactPrice:
-    display_price: float
-    original_price: float
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'ExactPrice':
-        assert isinstance(obj, dict)
-        display_price = from_float(obj.get("display_price"))
-        original_price = from_float(obj.get("original_price"))
-        return ExactPrice(display_price, original_price)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["display_price"] = to_float(self.display_price)
-        result["original_price"] = to_float(self.original_price)
-        return result
-
-
-@dataclass
-class Image:
-    height: str
-    uri: str
-    width: str
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'Image':
-        assert isinstance(obj, dict)
-        height = from_str(obj.get("height"))
-        uri = from_str(obj.get("uri"))
-        width = from_str(obj.get("width"))
-        return Image(height, uri, width)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["height"] = from_str(self.height)
-        result["uri"] = from_str(self.uri)
-        result["width"] = from_str(self.width)
-        return result
-
-
-@dataclass
 class ProductDetailsRecoShow:
     currency_code: Currency
     exact_price: ExactPrice
@@ -1156,34 +1491,6 @@ class RemoveFromList:
 
 
 @dataclass
-class RemoveItem:
-    event_time: int
-    event_type: EventType
-    item_id: str
-    user_info: UserInfo
-    event_detail: Optional[EventDetail] = None
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'RemoveItem':
-        assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
-        event_type = EventType(obj.get("event_type"))
-        item_id = from_str(obj.get("item_id"))
-        user_info = UserInfo.from_dict(obj.get("user_info"))
-        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return RemoveItem(event_time, event_type, item_id, user_info, event_detail)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["event_time"] = from_int(self.event_time)
-        result["event_type"] = to_enum(EventType, self.event_type)
-        result["item_id"] = from_str(self.item_id)
-        result["user_info"] = to_class(UserInfo, self.user_info)
-        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
-        return result
-
-
-@dataclass
 class CartPageView:
     event_time: int
     event_type: EventType
@@ -1278,105 +1585,6 @@ class UnknownEvent:
         return result
 
 
-class StockState(Enum):
-    BACK_ORDER = "BackOrder"
-    IN_STOCK = "InStock"
-    OUT_OF_STOCK = "OutOfStock"
-    PRE_ORDER = "PreOrder"
-
-
-@dataclass
-class ProductDetails:
-    currency_code: Currency
-    exact_price: ExactPrice
-    id: str
-    stock_state: StockState
-    title: str
-    attributes: Optional[Dict[str, str]] = None
-    available_quantity: Optional[int] = None
-    canonical_product_uri: Optional[str] = None
-    categorical_attributes: Optional[Dict[str, str]] = None
-    categories: Optional[List[List[str]]] = None
-    costs: Optional[Dict[str, float]] = None
-    description: Optional[str] = None
-    images: Optional[List[Image]] = None
-    item_group_id: Optional[str] = None
-    language_code: Optional[str] = None
-    numeric_attributes: Optional[Dict[str, float]] = None
-    tags: Optional[List[str]] = None
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'ProductDetails':
-        assert isinstance(obj, dict)
-        currency_code = Currency(obj.get("currency_code"))
-        exact_price = ExactPrice.from_dict(obj.get("exact_price"))
-        id = from_str(obj.get("id"))
-        stock_state = StockState(obj.get("stock_state"))
-        title = from_str(obj.get("title"))
-        attributes = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("attributes"))
-        available_quantity = from_union([from_none, from_int], obj.get("available_quantity"))
-        canonical_product_uri = from_union([from_none, from_str], obj.get("canonical_product_uri"))
-        categorical_attributes = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("categorical_attributes"))
-        categories = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], obj.get("categories"))
-        costs = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("costs"))
-        description = from_union([from_none, from_str], obj.get("description"))
-        images = from_union([from_none, lambda x: from_list(Image.from_dict, x)], obj.get("images"))
-        item_group_id = from_union([from_none, from_str], obj.get("item_group_id"))
-        language_code = from_union([from_none, from_str], obj.get("language_code"))
-        numeric_attributes = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("numeric_attributes"))
-        tags = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("tags"))
-        return ProductDetails(currency_code, exact_price, id, stock_state, title, attributes, available_quantity, canonical_product_uri, categorical_attributes, categories, costs, description, images, item_group_id, language_code, numeric_attributes, tags)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["currency_code"] = to_enum(Currency, self.currency_code)
-        result["exact_price"] = to_class(ExactPrice, self.exact_price)
-        result["id"] = from_str(self.id)
-        result["stock_state"] = to_enum(StockState, self.stock_state)
-        result["title"] = from_str(self.title)
-        result["attributes"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.attributes)
-        result["available_quantity"] = from_union([from_none, from_int], self.available_quantity)
-        result["canonical_product_uri"] = from_union([from_none, from_str], self.canonical_product_uri)
-        result["categorical_attributes"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.categorical_attributes)
-        result["categories"] = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], self.categories)
-        result["costs"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.costs)
-        result["description"] = from_union([from_none, from_str], self.description)
-        result["images"] = from_union([from_none, lambda x: from_list(lambda x: to_class(Image, x), x)], self.images)
-        result["item_group_id"] = from_union([from_none, from_str], self.item_group_id)
-        result["language_code"] = from_union([from_none, from_str], self.language_code)
-        result["numeric_attributes"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.numeric_attributes)
-        result["tags"] = from_union([from_none, lambda x: from_list(from_str, x)], self.tags)
-        return result
-
-
-@dataclass
-class UpsertItem:
-    event_time: int
-    event_type: EventType
-    product_details: ProductDetails
-    user_info: UserInfo
-    event_detail: Optional[EventDetail] = None
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'UpsertItem':
-        assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
-        event_type = EventType(obj.get("event_type"))
-        product_details = ProductDetails.from_dict(obj.get("product_details"))
-        user_info = UserInfo.from_dict(obj.get("user_info"))
-        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return UpsertItem(event_time, event_type, product_details, user_info, event_detail)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["event_time"] = from_int(self.event_time)
-        result["event_type"] = to_enum(EventType, self.event_type)
-        result["product_details"] = to_class(ProductDetails, self.product_details)
-        result["user_info"] = to_class(UserInfo, self.user_info)
-        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
-        return result
-
-
 def add_to_cart_from_dict(s: Any) -> AddToCart:
     return AddToCart.from_dict(s)
 
@@ -1449,12 +1657,44 @@ def image_interaction_to_dict(x: ImageInteraction) -> Any:
     return to_class(ImageInteraction, x)
 
 
+def remove_item_from_dict(s: Any) -> RemoveItem:
+    return RemoveItem.from_dict(s)
+
+
+def remove_item_to_dict(x: RemoveItem) -> Any:
+    return to_class(RemoveItem, x)
+
+
+def upsert_item_from_dict(s: Any) -> UpsertItem:
+    return UpsertItem.from_dict(s)
+
+
+def upsert_item_to_dict(x: UpsertItem) -> Any:
+    return to_class(UpsertItem, x)
+
+
 def list_view_from_dict(s: Any) -> ListView:
     return ListView.from_dict(s)
 
 
 def list_view_to_dict(x: ListView) -> Any:
     return to_class(ListView, x)
+
+
+def offline_recommendations_remove_from_dict(s: Any) -> OfflineRecommendationsRemove:
+    return OfflineRecommendationsRemove.from_dict(s)
+
+
+def offline_recommendations_remove_to_dict(x: OfflineRecommendationsRemove) -> Any:
+    return to_class(OfflineRecommendationsRemove, x)
+
+
+def offline_recommendations_upsert_from_dict(s: Any) -> OfflineRecommendationsUpsert:
+    return OfflineRecommendationsUpsert.from_dict(s)
+
+
+def offline_recommendations_upsert_to_dict(x: OfflineRecommendationsUpsert) -> Any:
+    return to_class(OfflineRecommendationsUpsert, x)
 
 
 def other_interaction_from_dict(s: Any) -> OtherInteraction:
@@ -1471,6 +1711,22 @@ def page_visit_from_dict(s: Any) -> PageVisit:
 
 def page_visit_to_dict(x: PageVisit) -> Any:
     return to_class(PageVisit, x)
+
+
+def placement_remove_from_dict(s: Any) -> PlacementRemove:
+    return PlacementRemove.from_dict(s)
+
+
+def placement_remove_to_dict(x: PlacementRemove) -> Any:
+    return to_class(PlacementRemove, x)
+
+
+def placement_upsert_from_dict(s: Any) -> PlacementUpsert:
+    return PlacementUpsert.from_dict(s)
+
+
+def placement_upsert_to_dict(x: PlacementUpsert) -> Any:
+    return to_class(PlacementUpsert, x)
 
 
 def purchase_complete_from_dict(s: Any) -> PurchaseComplete:
@@ -1521,14 +1777,6 @@ def remove_from_list_to_dict(x: RemoveFromList) -> Any:
     return to_class(RemoveFromList, x)
 
 
-def remove_item_from_dict(s: Any) -> RemoveItem:
-    return RemoveItem.from_dict(s)
-
-
-def remove_item_to_dict(x: RemoveItem) -> Any:
-    return to_class(RemoveItem, x)
-
-
 def cart_page_view_from_dict(s: Any) -> CartPageView:
     return CartPageView.from_dict(s)
 
@@ -1551,11 +1799,3 @@ def unknown_event_from_dict(s: Any) -> UnknownEvent:
 
 def unknown_event_to_dict(x: UnknownEvent) -> Any:
     return to_class(UnknownEvent, x)
-
-
-def upsert_item_from_dict(s: Any) -> UpsertItem:
-    return UpsertItem.from_dict(s)
-
-
-def upsert_item_to_dict(x: UpsertItem) -> Any:
-    return to_class(UpsertItem, x)
