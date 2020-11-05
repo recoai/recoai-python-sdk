@@ -415,7 +415,6 @@ class AddToCart:
     user_info: UserInfo
     cart_id: Optional[str] = None
     event_detail: Optional[EventDetail] = None
-    rec_id: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'AddToCart':
@@ -426,8 +425,7 @@ class AddToCart:
         user_info = UserInfo.from_dict(obj.get("user_info"))
         cart_id = from_union([from_none, from_str], obj.get("cart_id"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        rec_id = from_union([from_none, from_str], obj.get("rec_id"))
-        return AddToCart(event_time, event_type, items, user_info, cart_id, event_detail, rec_id)
+        return AddToCart(event_time, event_type, items, user_info, cart_id, event_detail)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -437,7 +435,6 @@ class AddToCart:
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["cart_id"] = from_union([from_none, from_str], self.cart_id)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
-        result["rec_id"] = from_union([from_none, from_str], self.rec_id)
         return result
 
 
@@ -902,6 +899,7 @@ class LocationClass:
     add_to_cart: Optional[str] = None
     category_page: Optional[str] = None
     search_page: Optional[SearchInfo] = None
+    checkout_page: Optional[List[str]] = None
     other_page: Optional[PageInfo] = None
     unknown_page: Optional[PageInfo] = None
 
@@ -912,9 +910,10 @@ class LocationClass:
         add_to_cart = from_union([from_str, from_none], obj.get("AddToCart"))
         category_page = from_union([from_str, from_none], obj.get("CategoryPage"))
         search_page = from_union([SearchInfo.from_dict, from_none], obj.get("SearchPage"))
+        checkout_page = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("CheckoutPage"))
         other_page = from_union([PageInfo.from_dict, from_none], obj.get("OtherPage"))
         unknown_page = from_union([PageInfo.from_dict, from_none], obj.get("UnknownPage"))
-        return LocationClass(product_page, add_to_cart, category_page, search_page, other_page, unknown_page)
+        return LocationClass(product_page, add_to_cart, category_page, search_page, checkout_page, other_page, unknown_page)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -922,13 +921,13 @@ class LocationClass:
         result["AddToCart"] = from_union([from_str, from_none], self.add_to_cart)
         result["CategoryPage"] = from_union([from_str, from_none], self.category_page)
         result["SearchPage"] = from_union([lambda x: to_class(SearchInfo, x), from_none], self.search_page)
+        result["CheckoutPage"] = from_union([from_none, lambda x: from_list(from_str, x)], self.checkout_page)
         result["OtherPage"] = from_union([lambda x: to_class(PageInfo, x), from_none], self.other_page)
         result["UnknownPage"] = from_union([lambda x: to_class(PageInfo, x), from_none], self.unknown_page)
         return result
 
 
 class LocationEnum(Enum):
-    CHECKOUT_PAGE = "CheckoutPage"
     ERROR404 = "Error404"
     HOME_PAGE = "HomePage"
 
@@ -1016,10 +1015,13 @@ class ProductDetailsRecoShow:
     currency_code: Currency
     exact_price: ExactPrice
     id: str
+    rec_id: str
     title: str
     canonical_product_uri: Optional[str] = None
     categories: Optional[List[List[str]]] = None
     images: Optional[List[Image]] = None
+    score: Optional[float] = None
+    strategies_used: Optional[Dict[str, float]] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ProductDetailsRecoShow':
@@ -1027,21 +1029,27 @@ class ProductDetailsRecoShow:
         currency_code = Currency(obj.get("currency_code"))
         exact_price = ExactPrice.from_dict(obj.get("exact_price"))
         id = from_str(obj.get("id"))
+        rec_id = from_str(obj.get("rec_id"))
         title = from_str(obj.get("title"))
         canonical_product_uri = from_union([from_none, from_str], obj.get("canonical_product_uri"))
         categories = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], obj.get("categories"))
         images = from_union([from_none, lambda x: from_list(Image.from_dict, x)], obj.get("images"))
-        return ProductDetailsRecoShow(currency_code, exact_price, id, title, canonical_product_uri, categories, images)
+        score = from_union([from_none, from_float], obj.get("score"))
+        strategies_used = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("strategies_used"))
+        return ProductDetailsRecoShow(currency_code, exact_price, id, rec_id, title, canonical_product_uri, categories, images, score, strategies_used)
 
     def to_dict(self) -> dict:
         result: dict = {}
         result["currency_code"] = to_enum(Currency, self.currency_code)
         result["exact_price"] = to_class(ExactPrice, self.exact_price)
         result["id"] = from_str(self.id)
+        result["rec_id"] = from_str(self.rec_id)
         result["title"] = from_str(self.title)
         result["canonical_product_uri"] = from_union([from_none, from_str], self.canonical_product_uri)
         result["categories"] = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], self.categories)
         result["images"] = from_union([from_none, lambda x: from_list(lambda x: to_class(Image, x), x)], self.images)
+        result["score"] = from_union([from_none, to_float], self.score)
+        result["strategies_used"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.strategies_used)
         return result
 
 
@@ -1051,7 +1059,6 @@ class RecoShow:
     event_type: EventType
     items: List[ProductDetailsRecoShow]
     location: Union[LocationClass, LocationEnum]
-    rec_id: str
     user_info: UserInfo
     additional_uri_params: Optional[Dict[str, str]] = None
     event_detail: Optional[EventDetail] = None
@@ -1065,13 +1072,12 @@ class RecoShow:
         event_type = EventType(obj.get("event_type"))
         items = from_list(ProductDetailsRecoShow.from_dict, obj.get("items"))
         location = from_union([LocationClass.from_dict, LocationEnum], obj.get("location"))
-        rec_id = from_str(obj.get("rec_id"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         additional_uri_params = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("additional_uri_params"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
         experiment_id = from_union([from_none, from_str], obj.get("experiment_id"))
         placement_name = from_union([from_none, from_str], obj.get("placement_name"))
-        return RecoShow(event_time, event_type, items, location, rec_id, user_info, additional_uri_params, event_detail, experiment_id, placement_name)
+        return RecoShow(event_time, event_type, items, location, user_info, additional_uri_params, event_detail, experiment_id, placement_name)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -1079,7 +1085,6 @@ class RecoShow:
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ProductDetailsRecoShow, x), self.items)
         result["location"] = from_union([lambda x: to_class(LocationClass, x), lambda x: to_enum(LocationEnum, x)], self.location)
-        result["rec_id"] = from_str(self.rec_id)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["additional_uri_params"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.additional_uri_params)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
