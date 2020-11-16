@@ -740,25 +740,6 @@ class RemoveItem:
 
 
 @dataclass
-class ExactPrice:
-    display_price: float
-    original_price: float
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'ExactPrice':
-        assert isinstance(obj, dict)
-        display_price = from_float(obj.get("display_price"))
-        original_price = from_float(obj.get("original_price"))
-        return ExactPrice(display_price, original_price)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["display_price"] = to_float(self.display_price)
-        result["original_price"] = to_float(self.original_price)
-        return result
-
-
-@dataclass
 class Image:
     height: str
     uri: str
@@ -780,6 +761,25 @@ class Image:
         return result
 
 
+@dataclass
+class ExactPrice:
+    display_price: float
+    original_price: float
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'ExactPrice':
+        assert isinstance(obj, dict)
+        display_price = from_float(obj.get("display_price"))
+        original_price = from_float(obj.get("original_price"))
+        return ExactPrice(display_price, original_price)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["display_price"] = to_float(self.display_price)
+        result["original_price"] = to_float(self.original_price)
+        return result
+
+
 class StockState(Enum):
     BACK_ORDER = "BackOrder"
     IN_STOCK = "InStock"
@@ -790,8 +790,8 @@ class StockState(Enum):
 @dataclass
 class ProductDetails:
     currency_code: Currency
-    exact_price: ExactPrice
     id: str
+    price: ExactPrice
     stock_state: StockState
     title: str
     attributes: Optional[Dict[str, str]] = None
@@ -805,14 +805,15 @@ class ProductDetails:
     item_group_id: Optional[str] = None
     language_code: Optional[str] = None
     numeric_attributes: Optional[Dict[str, float]] = None
+    product_code: Optional[str] = None
     tags: Optional[List[str]] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ProductDetails':
         assert isinstance(obj, dict)
         currency_code = Currency(obj.get("currency_code"))
-        exact_price = ExactPrice.from_dict(obj.get("exact_price"))
         id = from_str(obj.get("id"))
+        price = ExactPrice.from_dict(obj.get("price"))
         stock_state = StockState(obj.get("stock_state"))
         title = from_str(obj.get("title"))
         attributes = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("attributes"))
@@ -826,14 +827,15 @@ class ProductDetails:
         item_group_id = from_union([from_none, from_str], obj.get("item_group_id"))
         language_code = from_union([from_none, from_str], obj.get("language_code"))
         numeric_attributes = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("numeric_attributes"))
+        product_code = from_union([from_none, from_str], obj.get("product_code"))
         tags = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("tags"))
-        return ProductDetails(currency_code, exact_price, id, stock_state, title, attributes, available_quantity, canonical_product_uri, categorical_attributes, categories, costs, description, images, item_group_id, language_code, numeric_attributes, tags)
+        return ProductDetails(currency_code, id, price, stock_state, title, attributes, available_quantity, canonical_product_uri, categorical_attributes, categories, costs, description, images, item_group_id, language_code, numeric_attributes, product_code, tags)
 
     def to_dict(self) -> dict:
         result: dict = {}
         result["currency_code"] = to_enum(Currency, self.currency_code)
-        result["exact_price"] = to_class(ExactPrice, self.exact_price)
         result["id"] = from_str(self.id)
+        result["price"] = to_class(ExactPrice, self.price)
         result["stock_state"] = to_enum(StockState, self.stock_state)
         result["title"] = from_str(self.title)
         result["attributes"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.attributes)
@@ -847,6 +849,7 @@ class ProductDetails:
         result["item_group_id"] = from_union([from_none, from_str], self.item_group_id)
         result["language_code"] = from_union([from_none, from_str], self.language_code)
         result["numeric_attributes"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.numeric_attributes)
+        result["product_code"] = from_union([from_none, from_str], self.product_code)
         result["tags"] = from_union([from_none, lambda x: from_list(from_str, x)], self.tags)
         return result
 
@@ -1104,10 +1107,15 @@ class GenericStrategyEnum(Enum):
     ALSO_ADDED_TO_CART = "AlsoAddedToCart"
     ALSO_PURCHASED = "AlsoPurchased"
     ALSO_SEEN = "AlsoSeen"
+    BESTSELLER_CATEGORY = "BestsellerCategory"
+    BESTSELLER_GLOBAL = "BestsellerGlobal"
     CONTENT_MATCHING = "ContentMatching"
     MOST_PURCHASES = "MostPurchases"
     MOST_VIEWS = "MostViews"
+    SEARCH_MATCHING = "SearchMatching"
     SEEN_IN_SESSION = "SeenInSession"
+    SEEN_IN_SESSION_COCCUR_ADDED_TO_CART = "SeenInSessionCoccurAddedToCart"
+    SEEN_IN_SESSION_COCCUR_SEEN = "SeenInSessionCoccurSeen"
     SIMILAR_ATTRIBUTES = "SimilarAttributes"
     SIMILAR_IMAGE = "SimilarImage"
     SIMILAR_TEXT = "SimilarText"
@@ -1273,7 +1281,7 @@ class SearchInfo:
 class LocationClass:
     product_page: Optional[str] = None
     add_to_cart: Optional[str] = None
-    category_page: Optional[str] = None
+    category_page: Optional[List[str]] = None
     search_page: Optional[SearchInfo] = None
     checkout_page: Optional[List[str]] = None
     other_page: Optional[PageInfo] = None
@@ -1284,7 +1292,7 @@ class LocationClass:
         assert isinstance(obj, dict)
         product_page = from_union([from_str, from_none], obj.get("ProductPage"))
         add_to_cart = from_union([from_str, from_none], obj.get("AddToCart"))
-        category_page = from_union([from_str, from_none], obj.get("CategoryPage"))
+        category_page = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("CategoryPage"))
         search_page = from_union([SearchInfo.from_dict, from_none], obj.get("SearchPage"))
         checkout_page = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("CheckoutPage"))
         other_page = from_union([PageInfo.from_dict, from_none], obj.get("OtherPage"))
@@ -1295,7 +1303,7 @@ class LocationClass:
         result: dict = {}
         result["ProductPage"] = from_union([from_str, from_none], self.product_page)
         result["AddToCart"] = from_union([from_str, from_none], self.add_to_cart)
-        result["CategoryPage"] = from_union([from_str, from_none], self.category_page)
+        result["CategoryPage"] = from_union([from_none, lambda x: from_list(from_str, x)], self.category_page)
         result["SearchPage"] = from_union([lambda x: to_class(SearchInfo, x), from_none], self.search_page)
         result["CheckoutPage"] = from_union([from_none, lambda x: from_list(from_str, x)], self.checkout_page)
         result["OtherPage"] = from_union([lambda x: to_class(PageInfo, x), from_none], self.other_page)
@@ -1348,8 +1356,9 @@ class RecoRequest:
 @dataclass
 class ProductDetailsRecoShow:
     currency_code: Currency
-    exact_price: ExactPrice
     id: str
+    price: ExactPrice
+    product_code: str
     rec_id: str
     title: str
     canonical_product_uri: Optional[str] = None
@@ -1362,8 +1371,9 @@ class ProductDetailsRecoShow:
     def from_dict(obj: Any) -> 'ProductDetailsRecoShow':
         assert isinstance(obj, dict)
         currency_code = Currency(obj.get("currency_code"))
-        exact_price = ExactPrice.from_dict(obj.get("exact_price"))
         id = from_str(obj.get("id"))
+        price = ExactPrice.from_dict(obj.get("price"))
+        product_code = from_str(obj.get("product_code"))
         rec_id = from_str(obj.get("rec_id"))
         title = from_str(obj.get("title"))
         canonical_product_uri = from_union([from_none, from_str], obj.get("canonical_product_uri"))
@@ -1371,13 +1381,14 @@ class ProductDetailsRecoShow:
         images = from_union([from_none, lambda x: from_list(Image.from_dict, x)], obj.get("images"))
         score = from_union([from_none, from_float], obj.get("score"))
         strategies_used = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("strategies_used"))
-        return ProductDetailsRecoShow(currency_code, exact_price, id, rec_id, title, canonical_product_uri, categories, images, score, strategies_used)
+        return ProductDetailsRecoShow(currency_code, id, price, product_code, rec_id, title, canonical_product_uri, categories, images, score, strategies_used)
 
     def to_dict(self) -> dict:
         result: dict = {}
         result["currency_code"] = to_enum(Currency, self.currency_code)
-        result["exact_price"] = to_class(ExactPrice, self.exact_price)
         result["id"] = from_str(self.id)
+        result["price"] = to_class(ExactPrice, self.price)
+        result["product_code"] = from_str(self.product_code)
         result["rec_id"] = from_str(self.rec_id)
         result["title"] = from_str(self.title)
         result["canonical_product_uri"] = from_union([from_none, from_str], self.canonical_product_uri)
