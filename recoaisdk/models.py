@@ -8,6 +8,7 @@
 #     result = add_to_list_from_dict(json.loads(json_string))
 #     result = api_settings_from_dict(json.loads(json_string))
 #     result = category_page_view_from_dict(json.loads(json_string))
+#     result = change_item_stock_state_from_dict(json.loads(json_string))
 #     result = checkout_start_from_dict(json.loads(json_string))
 #     result = common_from_dict(json.loads(json_string))
 #     result = detail_product_view_from_dict(json.loads(json_string))
@@ -28,6 +29,7 @@
 #     result = reco_show_from_dict(json.loads(json_string))
 #     result = remove_from_cart_from_dict(json.loads(json_string))
 #     result = remove_from_list_from_dict(json.loads(json_string))
+#     result = search_items_from_dict(json.loads(json_string))
 #     result = cart_page_view_from_dict(json.loads(json_string))
 #     result = sort_items_from_dict(json.loads(json_string))
 #     result = unknown_event_from_dict(json.loads(json_string))
@@ -130,6 +132,7 @@ class EventType(Enum):
     ADD_TO_LIST = "AddToList"
     CART_PAGE_VIEW = "CartPageView"
     CATEGORY_PAGE_VIEW = "CategoryPageView"
+    CHANGE_ITEM_STOCK_STATE = "ChangeItemStockState"
     CHECKOUT_START = "CheckoutStart"
     DETAIL_PRODUCT_VIEW = "DetailProductView"
     HOME_PAGE_VIEW = "HomePageView"
@@ -149,6 +152,7 @@ class EventType(Enum):
     RECO_SHOW = "RecoShow"
     REMOVE_FROM_CART = "RemoveFromCart"
     REMOVE_FROM_LIST = "RemoveFromList"
+    SEARCH_ITEMS = "SearchItems"
     SORT_ITEMS = "SortItems"
     UNKNOWN_EVENT = "UnknownEvent"
 
@@ -417,63 +421,63 @@ class UserInfo:
 
 @dataclass
 class AddToCart:
-    event_time: int
     event_type: EventType
-    items: List[ItemDetails]
+    item: ItemDetails
     user_info: UserInfo
     cart_id: Optional[str] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'AddToCart':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
-        items = from_list(ItemDetails.from_dict, obj.get("items"))
+        item = ItemDetails.from_dict(obj.get("item"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         cart_id = from_union([from_none, from_str], obj.get("cart_id"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return AddToCart(event_time, event_type, items, user_info, cart_id, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return AddToCart(event_type, item, user_info, cart_id, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
-        result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
+        result["item"] = to_class(ItemDetails, self.item)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["cart_id"] = from_union([from_none, from_str], self.cart_id)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class AddToList:
-    event_time: int
     event_type: EventType
-    items: List[ItemDetails]
+    item: ItemDetails
     list_id: str
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'AddToList':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
-        items = from_list(ItemDetails.from_dict, obj.get("items"))
+        item = ItemDetails.from_dict(obj.get("item"))
         list_id = from_str(obj.get("list_id"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return AddToList(event_time, event_type, items, list_id, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return AddToList(event_type, item, list_id, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
-        result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
+        result["item"] = to_class(ItemDetails, self.item)
         result["list_id"] = from_str(self.list_id)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -495,35 +499,73 @@ class APISettings:
 
 @dataclass
 class CategoryPageView:
-    event_time: int
     event_type: EventType
     items: List[ItemDetails]
     on_screen: bool
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     page_categories: Optional[List[str]] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'CategoryPageView':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ItemDetails.from_dict, obj.get("items"))
         on_screen = from_bool(obj.get("on_screen"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         page_categories = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("page_categories"))
-        return CategoryPageView(event_time, event_type, items, on_screen, user_info, event_detail, page_categories)
+        return CategoryPageView(event_type, items, on_screen, user_info, event_detail, event_time, page_categories)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["on_screen"] = from_bool(self.on_screen)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["page_categories"] = from_union([from_none, lambda x: from_list(from_str, x)], self.page_categories)
+        return result
+
+
+class StockState(Enum):
+    BACK_ORDER = "BackOrder"
+    IN_STOCK = "InStock"
+    OUT_OF_STOCK = "OutOfStock"
+    PRE_ORDER = "PreOrder"
+
+
+@dataclass
+class ChangeItemStockState:
+    event_type: EventType
+    item_id: str
+    stock_state: StockState
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'ChangeItemStockState':
+        assert isinstance(obj, dict)
+        event_type = EventType(obj.get("event_type"))
+        item_id = from_str(obj.get("item_id"))
+        stock_state = StockState(obj.get("stock_state"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return ChangeItemStockState(event_type, item_id, stock_state, user_info, event_detail, event_time)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["item_id"] = from_str(self.item_id)
+        result["stock_state"] = to_enum(StockState, self.stock_state)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -595,119 +637,119 @@ class PurchaseTransaction:
 
 @dataclass
 class CheckoutStart:
-    event_time: int
     event_type: EventType
     items: List[ItemDetails]
     purchase_transaction: PurchaseTransaction
     user_info: UserInfo
     cart_id: Optional[str] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'CheckoutStart':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ItemDetails.from_dict, obj.get("items"))
         purchase_transaction = PurchaseTransaction.from_dict(obj.get("purchase_transaction"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         cart_id = from_union([from_none, from_str], obj.get("cart_id"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return CheckoutStart(event_time, event_type, items, purchase_transaction, user_info, cart_id, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return CheckoutStart(event_type, items, purchase_transaction, user_info, cart_id, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["purchase_transaction"] = to_class(PurchaseTransaction, self.purchase_transaction)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["cart_id"] = from_union([from_none, from_str], self.cart_id)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class DetailProductView:
-    event_time: int
     event_type: EventType
     item: ItemDetails
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     rec_id: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'DetailProductView':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         item = ItemDetails.from_dict(obj.get("item"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         rec_id = from_union([from_none, from_str], obj.get("rec_id"))
-        return DetailProductView(event_time, event_type, item, user_info, event_detail, rec_id)
+        return DetailProductView(event_type, item, user_info, event_detail, event_time, rec_id)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["item"] = to_class(ItemDetails, self.item)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["rec_id"] = from_union([from_none, from_str], self.rec_id)
         return result
 
 
 @dataclass
 class HomePageView:
-    event_time: int
     event_type: EventType
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'HomePageView':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return HomePageView(event_time, event_type, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return HomePageView(event_type, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class ImageInteraction:
-    event_time: int
     event_type: EventType
     item: ItemDetails
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ImageInteraction':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         item = ItemDetails.from_dict(obj.get("item"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return ImageInteraction(event_time, event_type, item, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return ImageInteraction(event_type, item, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["item"] = to_class(ItemDetails, self.item)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -778,13 +820,6 @@ class ExactPrice:
         result["display_price"] = to_float(self.display_price)
         result["original_price"] = to_float(self.original_price)
         return result
-
-
-class StockState(Enum):
-    BACK_ORDER = "BackOrder"
-    IN_STOCK = "InStock"
-    OUT_OF_STOCK = "OutOfStock"
-    PRE_ORDER = "PreOrder"
 
 
 @dataclass
@@ -884,32 +919,32 @@ class UpsertItem:
 
 @dataclass
 class ListView:
-    event_time: int
     event_type: EventType
     items: List[ItemDetails]
     list_id: str
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ListView':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ItemDetails.from_dict, obj.get("items"))
         list_id = from_str(obj.get("list_id"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return ListView(event_time, event_type, items, list_id, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return ListView(event_type, items, list_id, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["list_id"] = from_str(self.list_id)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -936,144 +971,144 @@ class OfflineRecommendationsTypeEnum(Enum):
 
 @dataclass
 class OfflineRecommendationsRemove:
-    event_time: int
     event_type: EventType
     name: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum]
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'OfflineRecommendationsRemove':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         name = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum], obj.get("name"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return OfflineRecommendationsRemove(event_time, event_type, name, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return OfflineRecommendationsRemove(event_type, name, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["name"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x)], self.name)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class OfflineRecommendationsUpsert:
-    event_time: int
     event_type: EventType
     matrix: Dict[str, Dict[str, int]]
     name: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum]
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'OfflineRecommendationsUpsert':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         matrix = from_dict(lambda x: from_dict(from_int, x), obj.get("matrix"))
         name = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum], obj.get("name"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return OfflineRecommendationsUpsert(event_time, event_type, matrix, name, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return OfflineRecommendationsUpsert(event_type, matrix, name, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["matrix"] = from_dict(lambda x: from_dict(from_int, x), self.matrix)
         result["name"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x)], self.name)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class OtherInteraction:
-    event_time: int
     event_type: EventType
     interaction_name: str
     item: ItemDetails
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'OtherInteraction':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         interaction_name = from_str(obj.get("interaction_name"))
         item = ItemDetails.from_dict(obj.get("item"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return OtherInteraction(event_time, event_type, interaction_name, item, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return OtherInteraction(event_type, interaction_name, item, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["interaction_name"] = from_str(self.interaction_name)
         result["item"] = to_class(ItemDetails, self.item)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class PageVisit:
-    event_time: int
     event_type: EventType
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'PageVisit':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return PageVisit(event_time, event_type, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return PageVisit(event_type, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class PlacementRemove:
-    event_time: int
     event_type: EventType
     name: str
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'PlacementRemove':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         name = from_str(obj.get("name"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return PlacementRemove(event_time, event_type, name, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return PlacementRemove(event_type, name, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["name"] = from_str(self.name)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -1142,102 +1177,105 @@ class WeightedGenericCandidateRec:
 
 @dataclass
 class PlacementUpsert:
-    event_time: int
     event_type: EventType
     name: str
     ranking: RankingStrategy
     strategies: List[WeightedGenericCandidateRec]
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
+    url_params: Optional[Dict[str, str]] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'PlacementUpsert':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         name = from_str(obj.get("name"))
         ranking = RankingStrategy(obj.get("ranking"))
         strategies = from_list(WeightedGenericCandidateRec.from_dict, obj.get("strategies"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return PlacementUpsert(event_time, event_type, name, ranking, strategies, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        url_params = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("url_params"))
+        return PlacementUpsert(event_type, name, ranking, strategies, user_info, event_detail, event_time, url_params)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["name"] = from_str(self.name)
         result["ranking"] = to_enum(RankingStrategy, self.ranking)
         result["strategies"] = from_list(lambda x: to_class(WeightedGenericCandidateRec, x), self.strategies)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
+        result["url_params"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.url_params)
         return result
 
 
 @dataclass
 class PurchaseComplete:
-    event_time: int
     event_type: EventType
     items: List[ItemDetails]
     purchase_transaction: PurchaseTransaction
     user_info: UserInfo
     cart_id: Optional[str] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'PurchaseComplete':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ItemDetails.from_dict, obj.get("items"))
         purchase_transaction = PurchaseTransaction.from_dict(obj.get("purchase_transaction"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         cart_id = from_union([from_none, from_str], obj.get("cart_id"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return PurchaseComplete(event_time, event_type, items, purchase_transaction, user_info, cart_id, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return PurchaseComplete(event_type, items, purchase_transaction, user_info, cart_id, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["purchase_transaction"] = to_class(PurchaseTransaction, self.purchase_transaction)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["cart_id"] = from_union([from_none, from_str], self.cart_id)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class RateProduct:
-    event_time: int
     event_type: EventType
     item: ItemDetails
     user_info: UserInfo
     comment: Optional[str] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     rating: Optional[float] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'RateProduct':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         item = ItemDetails.from_dict(obj.get("item"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         comment = from_union([from_none, from_str], obj.get("comment"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         rating = from_union([from_none, from_float], obj.get("rating"))
-        return RateProduct(event_time, event_type, item, user_info, comment, event_detail, rating)
+        return RateProduct(event_type, item, user_info, comment, event_detail, event_time, rating)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["item"] = to_class(ItemDetails, self.item)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["comment"] = from_union([from_none, from_str], self.comment)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["rating"] = from_union([from_none, to_float], self.rating)
         return result
 
@@ -1318,37 +1356,37 @@ class LocationEnum(Enum):
 
 @dataclass
 class RecoRequest:
-    event_time: int
     event_type: EventType
     location: Union[LocationClass, LocationEnum]
     n_items: int
     user_info: UserInfo
     additional_uri_params: Optional[Dict[str, str]] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     placement_name: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'RecoRequest':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         location = from_union([LocationClass.from_dict, LocationEnum], obj.get("location"))
         n_items = from_int(obj.get("n_items"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         additional_uri_params = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("additional_uri_params"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         placement_name = from_union([from_none, from_str], obj.get("placement_name"))
-        return RecoRequest(event_time, event_type, location, n_items, user_info, additional_uri_params, event_detail, placement_name)
+        return RecoRequest(event_type, location, n_items, user_info, additional_uri_params, event_detail, event_time, placement_name)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["location"] = from_union([lambda x: to_class(LocationClass, x), lambda x: to_enum(LocationEnum, x)], self.location)
         result["n_items"] = from_int(self.n_items)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["additional_uri_params"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.additional_uri_params)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["placement_name"] = from_union([from_none, from_str], self.placement_name)
         return result
 
@@ -1362,10 +1400,12 @@ class ProductDetailsRecoShow:
     rec_id: str
     title: str
     canonical_product_uri: Optional[str] = None
+    canonical_product_uri_with_params: Optional[str] = None
     categories: Optional[List[List[str]]] = None
     images: Optional[List[Image]] = None
     score: Optional[float] = None
     strategies_used: Optional[Dict[str, float]] = None
+    url_params: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ProductDetailsRecoShow':
@@ -1377,11 +1417,13 @@ class ProductDetailsRecoShow:
         rec_id = from_str(obj.get("rec_id"))
         title = from_str(obj.get("title"))
         canonical_product_uri = from_union([from_none, from_str], obj.get("canonical_product_uri"))
+        canonical_product_uri_with_params = from_union([from_none, from_str], obj.get("canonical_product_uri_with_params"))
         categories = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], obj.get("categories"))
         images = from_union([from_none, lambda x: from_list(Image.from_dict, x)], obj.get("images"))
         score = from_union([from_none, from_float], obj.get("score"))
         strategies_used = from_union([from_none, lambda x: from_dict(from_float, x)], obj.get("strategies_used"))
-        return ProductDetailsRecoShow(currency_code, id, price, product_code, rec_id, title, canonical_product_uri, categories, images, score, strategies_used)
+        url_params = from_union([from_none, from_str], obj.get("url_params"))
+        return ProductDetailsRecoShow(currency_code, id, price, product_code, rec_id, title, canonical_product_uri, canonical_product_uri_with_params, categories, images, score, strategies_used, url_params)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -1392,48 +1434,50 @@ class ProductDetailsRecoShow:
         result["rec_id"] = from_str(self.rec_id)
         result["title"] = from_str(self.title)
         result["canonical_product_uri"] = from_union([from_none, from_str], self.canonical_product_uri)
+        result["canonical_product_uri_with_params"] = from_union([from_none, from_str], self.canonical_product_uri_with_params)
         result["categories"] = from_union([from_none, lambda x: from_list(lambda x: from_list(from_str, x), x)], self.categories)
         result["images"] = from_union([from_none, lambda x: from_list(lambda x: to_class(Image, x), x)], self.images)
         result["score"] = from_union([from_none, to_float], self.score)
         result["strategies_used"] = from_union([from_none, lambda x: from_dict(to_float, x)], self.strategies_used)
+        result["url_params"] = from_union([from_none, from_str], self.url_params)
         return result
 
 
 @dataclass
 class RecoShow:
-    event_time: int
     event_type: EventType
     items: List[ProductDetailsRecoShow]
     location: Union[LocationClass, LocationEnum]
     user_info: UserInfo
     additional_uri_params: Optional[Dict[str, str]] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     experiment_id: Optional[str] = None
     placement_name: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'RecoShow':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ProductDetailsRecoShow.from_dict, obj.get("items"))
         location = from_union([LocationClass.from_dict, LocationEnum], obj.get("location"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         additional_uri_params = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("additional_uri_params"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         experiment_id = from_union([from_none, from_str], obj.get("experiment_id"))
         placement_name = from_union([from_none, from_str], obj.get("placement_name"))
-        return RecoShow(event_time, event_type, items, location, user_info, additional_uri_params, event_detail, experiment_id, placement_name)
+        return RecoShow(event_type, items, location, user_info, additional_uri_params, event_detail, event_time, experiment_id, placement_name)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ProductDetailsRecoShow, x), self.items)
         result["location"] = from_union([lambda x: to_class(LocationClass, x), lambda x: to_enum(LocationEnum, x)], self.location)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["additional_uri_params"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.additional_uri_params)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["experiment_id"] = from_union([from_none, from_str], self.experiment_id)
         result["placement_name"] = from_union([from_none, from_str], self.placement_name)
         return result
@@ -1441,94 +1485,125 @@ class RecoShow:
 
 @dataclass
 class RemoveFromCart:
-    event_time: int
     event_type: EventType
-    items: List[ItemDetails]
+    item: ItemDetails
     user_info: UserInfo
     cart_id: Optional[str] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'RemoveFromCart':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
-        items = from_list(ItemDetails.from_dict, obj.get("items"))
+        item = ItemDetails.from_dict(obj.get("item"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         cart_id = from_union([from_none, from_str], obj.get("cart_id"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return RemoveFromCart(event_time, event_type, items, user_info, cart_id, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return RemoveFromCart(event_type, item, user_info, cart_id, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
-        result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
+        result["item"] = to_class(ItemDetails, self.item)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["cart_id"] = from_union([from_none, from_str], self.cart_id)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
 @dataclass
 class RemoveFromList:
-    event_time: int
     event_type: EventType
     items: List[ItemDetails]
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     list_id: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'RemoveFromList':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ItemDetails.from_dict, obj.get("items"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         list_id = from_union([from_none, from_str], obj.get("list_id"))
-        return RemoveFromList(event_time, event_type, items, user_info, event_detail, list_id)
+        return RemoveFromList(event_type, items, user_info, event_detail, event_time, list_id)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["list_id"] = from_union([from_none, from_str], self.list_id)
         return result
 
 
 @dataclass
+class SearchItems:
+    event_type: EventType
+    items: List[ItemDetails]
+    query: str
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'SearchItems':
+        assert isinstance(obj, dict)
+        event_type = EventType(obj.get("event_type"))
+        items = from_list(ItemDetails.from_dict, obj.get("items"))
+        query = from_str(obj.get("query"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return SearchItems(event_type, items, query, user_info, event_detail, event_time)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
+        result["query"] = from_str(self.query)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
+        return result
+
+
+@dataclass
 class CartPageView:
-    event_time: int
     event_type: EventType
     items: List[ItemDetails]
     user_info: UserInfo
     cart_id: Optional[str] = None
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'CartPageView':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         items = from_list(ItemDetails.from_dict, obj.get("items"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         cart_id = from_union([from_none, from_str], obj.get("cart_id"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return CartPageView(event_time, event_type, items, user_info, cart_id, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return CartPageView(event_type, items, user_info, cart_id, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["cart_id"] = from_union([from_none, from_str], self.cart_id)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -1545,54 +1620,54 @@ class SortOrder(Enum):
 
 @dataclass
 class SortItems:
-    event_time: int
     event_type: EventType
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
     sort_order: Optional[SortOrder] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'SortItems':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
         sort_order = from_union([from_none, SortOrder], obj.get("sort_order"))
-        return SortItems(event_time, event_type, user_info, event_detail, sort_order)
+        return SortItems(event_type, user_info, event_detail, event_time, sort_order)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         result["sort_order"] = from_union([from_none, lambda x: to_enum(SortOrder, x)], self.sort_order)
         return result
 
 
 @dataclass
 class UnknownEvent:
-    event_time: int
     event_type: EventType
     user_info: UserInfo
     event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'UnknownEvent':
         assert isinstance(obj, dict)
-        event_time = from_int(obj.get("event_time"))
         event_type = EventType(obj.get("event_type"))
         user_info = UserInfo.from_dict(obj.get("user_info"))
         event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        return UnknownEvent(event_time, event_type, user_info, event_detail)
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return UnknownEvent(event_type, user_info, event_detail, event_time)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["event_time"] = from_int(self.event_time)
         result["event_type"] = to_enum(EventType, self.event_type)
         result["user_info"] = to_class(UserInfo, self.user_info)
         result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
         return result
 
 
@@ -1626,6 +1701,14 @@ def category_page_view_from_dict(s: Any) -> CategoryPageView:
 
 def category_page_view_to_dict(x: CategoryPageView) -> Any:
     return to_class(CategoryPageView, x)
+
+
+def change_item_stock_state_from_dict(s: Any) -> ChangeItemStockState:
+    return ChangeItemStockState.from_dict(s)
+
+
+def change_item_stock_state_to_dict(x: ChangeItemStockState) -> Any:
+    return to_class(ChangeItemStockState, x)
 
 
 def checkout_start_from_dict(s: Any) -> CheckoutStart:
@@ -1786,6 +1869,14 @@ def remove_from_list_from_dict(s: Any) -> RemoveFromList:
 
 def remove_from_list_to_dict(x: RemoveFromList) -> Any:
     return to_class(RemoveFromList, x)
+
+
+def search_items_from_dict(s: Any) -> SearchItems:
+    return SearchItems.from_dict(s)
+
+
+def search_items_to_dict(x: SearchItems) -> Any:
+    return to_class(SearchItems, x)
 
 
 def cart_page_view_from_dict(s: Any) -> CartPageView:
