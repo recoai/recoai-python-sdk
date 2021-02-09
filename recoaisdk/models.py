@@ -104,26 +104,26 @@ def from_bool(x: Any) -> bool:
 
 @dataclass
 class EventDetail:
+    rec_id: str
     url: str
     event_attributes: Optional[Dict[str, str]] = None
     experiment_ids: Optional[int] = None
-    rec_id: Optional[str] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'EventDetail':
         assert isinstance(obj, dict)
+        rec_id = from_str(obj.get("rec_id"))
         url = from_str(obj.get("url"))
         event_attributes = from_union([from_none, lambda x: from_dict(from_str, x)], obj.get("event_attributes"))
         experiment_ids = from_union([from_none, from_int], obj.get("experiment_ids"))
-        rec_id = from_union([from_none, from_str], obj.get("rec_id"))
-        return EventDetail(url, event_attributes, experiment_ids, rec_id)
+        return EventDetail(rec_id, url, event_attributes, experiment_ids)
 
     def to_dict(self) -> dict:
         result: dict = {}
+        result["rec_id"] = from_str(self.rec_id)
         result["url"] = from_str(self.url)
         result["event_attributes"] = from_union([from_none, lambda x: from_dict(from_str, x)], self.event_attributes)
         result["experiment_ids"] = from_union([from_none, from_int], self.experiment_ids)
-        result["rec_id"] = from_union([from_none, from_str], self.rec_id)
         return result
 
 
