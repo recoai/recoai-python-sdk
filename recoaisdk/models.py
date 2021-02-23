@@ -31,6 +31,8 @@
 #     result = remove_from_list_from_dict(json.loads(json_string))
 #     result = search_items_from_dict(json.loads(json_string))
 #     result = cart_page_view_from_dict(json.loads(json_string))
+#     result = smart_search_request_from_dict(json.loads(json_string))
+#     result = smart_search_show_from_dict(json.loads(json_string))
 #     result = sort_items_from_dict(json.loads(json_string))
 #     result = unknown_event_from_dict(json.loads(json_string))
 
@@ -153,6 +155,8 @@ class EventType(Enum):
     REMOVE_FROM_CART = "RemoveFromCart"
     REMOVE_FROM_LIST = "RemoveFromList"
     SEARCH_ITEMS = "SearchItems"
+    SMART_SEARCH_REQUEST = "SmartSearchRequest"
+    SMART_SEARCH_SHOW = "SmartSearchShow"
     SORT_ITEMS = "SortItems"
     UNKNOWN_EVENT = "UnknownEvent"
 
@@ -1607,6 +1611,88 @@ class CartPageView:
         return result
 
 
+class SearchOrder(Enum):
+    NEWEST = "Newest"
+    OLDEST = "Oldest"
+    PERSONALIZED = "Personalized"
+    POPULARITY_ASC = "PopularityAsc"
+    POPULARITY_DESC = "PopularityDesc"
+    PRICE_ASC = "PriceAsc"
+    PRICE_DESC = "PriceDesc"
+    RATING_ASC = "RatingAsc"
+    RATING_DESC = "RatingDesc"
+    RELEVANCE_ASC = "RelevanceAsc"
+    RELEVANCE_DESC = "RelevanceDesc"
+
+
+@dataclass
+class SmartSearchRequest:
+    event_type: EventType
+    filter: Dict[str, str]
+    n_items: int
+    page: int
+    query: str
+    search_order: SearchOrder
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'SmartSearchRequest':
+        assert isinstance(obj, dict)
+        event_type = EventType(obj.get("event_type"))
+        filter = from_dict(from_str, obj.get("filter"))
+        n_items = from_int(obj.get("n_items"))
+        page = from_int(obj.get("page"))
+        query = from_str(obj.get("query"))
+        search_order = SearchOrder(obj.get("search_order"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return SmartSearchRequest(event_type, filter, n_items, page, query, search_order, user_info, event_detail, event_time)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["filter"] = from_dict(from_str, self.filter)
+        result["n_items"] = from_int(self.n_items)
+        result["page"] = from_int(self.page)
+        result["query"] = from_str(self.query)
+        result["search_order"] = to_enum(SearchOrder, self.search_order)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
+        return result
+
+
+@dataclass
+class SmartSearchShow:
+    event_type: EventType
+    items: List[ProductDetailsRecoShow]
+    user_info: UserInfo
+    event_detail: Optional[EventDetail] = None
+    event_time: Optional[int] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'SmartSearchShow':
+        assert isinstance(obj, dict)
+        event_type = EventType(obj.get("event_type"))
+        items = from_list(ProductDetailsRecoShow.from_dict, obj.get("items"))
+        user_info = UserInfo.from_dict(obj.get("user_info"))
+        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
+        event_time = from_union([from_none, from_int], obj.get("event_time"))
+        return SmartSearchShow(event_type, items, user_info, event_detail, event_time)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["items"] = from_list(lambda x: to_class(ProductDetailsRecoShow, x), self.items)
+        result["user_info"] = to_class(UserInfo, self.user_info)
+        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
+        result["event_time"] = from_union([from_none, from_int], self.event_time)
+        return result
+
+
 class SortOrder(Enum):
     NAME_ASC = "NameAsc"
     NAME_DESC = "NameDesc"
@@ -1885,6 +1971,22 @@ def cart_page_view_from_dict(s: Any) -> CartPageView:
 
 def cart_page_view_to_dict(x: CartPageView) -> Any:
     return to_class(CartPageView, x)
+
+
+def smart_search_request_from_dict(s: Any) -> SmartSearchRequest:
+    return SmartSearchRequest.from_dict(s)
+
+
+def smart_search_request_to_dict(x: SmartSearchRequest) -> Any:
+    return to_class(SmartSearchRequest, x)
+
+
+def smart_search_show_from_dict(s: Any) -> SmartSearchShow:
+    return SmartSearchShow.from_dict(s)
+
+
+def smart_search_show_to_dict(x: SmartSearchShow) -> Any:
+    return to_class(SmartSearchShow, x)
 
 
 def sort_items_from_dict(s: Any) -> SortItems:
