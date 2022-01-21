@@ -10,7 +10,6 @@
 #     result = builder_fn1_from_dict(json.loads(json_string))
 #     result = builder_fn2_from_dict(json.loads(json_string))
 #     result = builder_variable_from_dict(json.loads(json_string))
-#     result = category_page_view_from_dict(json.loads(json_string))
 #     result = change_item_stock_state_from_dict(json.loads(json_string))
 #     result = checkout_start_from_dict(json.loads(json_string))
 #     result = common_from_dict(json.loads(json_string))
@@ -19,7 +18,6 @@
 #     result = image_interaction_from_dict(json.loads(json_string))
 #     result = item_attributes_selection_from_dict(json.loads(json_string))
 #     result = item_remove_from_dict(json.loads(json_string))
-#     result = items_impression_from_dict(json.loads(json_string))
 #     result = items_view_from_dict(json.loads(json_string))
 #     result = item_upsert_from_dict(json.loads(json_string))
 #     result = list_view_from_dict(json.loads(json_string))
@@ -500,6 +498,32 @@ class ExactPrice:
         return result
 
 
+class ItemType(Enum):
+    ARTICLE = "Article"
+    ECOMMERCE = "Ecommerce"
+    UNKNOWN = "Unknown"
+    VIDEO = "Video"
+
+
+@dataclass
+class Item:
+    item_id: str
+    item_type: ItemType
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'Item':
+        assert isinstance(obj, dict)
+        item_id = from_str(obj.get("item_id"))
+        item_type = ItemType(obj.get("item_type"))
+        return Item(item_id, item_type)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["item_id"] = from_str(self.item_id)
+        result["item_type"] = to_enum(ItemType, self.item_type)
+        return result
+
+
 class StockState(Enum):
     BACK_ORDER = "BackOrder"
     IN_STOCK = "InStock"
@@ -599,6 +623,7 @@ class Attributes:
     ecommerce: Optional[ItemEcommerceSpec] = None
     images: Optional[Images] = None
     price: Optional[ExactPrice] = None
+    related_items: Optional[List[Item]] = None
     stock: Optional[Stock] = None
     tags: Optional[Tags] = None
     video: Optional[Video] = None
@@ -614,10 +639,11 @@ class Attributes:
         ecommerce = from_union([ItemEcommerceSpec.from_dict, from_none], obj.get("ecommerce"))
         images = from_union([Images.from_dict, from_none], obj.get("images"))
         price = from_union([ExactPrice.from_dict, from_none], obj.get("price"))
+        related_items = from_union([from_none, lambda x: from_list(Item.from_dict, x)], obj.get("related_items"))
         stock = from_union([Stock.from_dict, from_none], obj.get("stock"))
         tags = from_union([Tags.from_dict, from_none], obj.get("tags"))
         video = from_union([Video.from_dict, from_none], obj.get("video"))
-        return Attributes(url, article, categories, costs, description, ecommerce, images, price, stock, tags, video)
+        return Attributes(url, article, categories, costs, description, ecommerce, images, price, related_items, stock, tags, video)
 
     def to_dict(self) -> dict:
         result: dict = {}
@@ -629,37 +655,28 @@ class Attributes:
         result["ecommerce"] = from_union([lambda x: to_class(ItemEcommerceSpec, x), from_none], self.ecommerce)
         result["images"] = from_union([lambda x: to_class(Images, x), from_none], self.images)
         result["price"] = from_union([lambda x: to_class(ExactPrice, x), from_none], self.price)
+        result["related_items"] = from_union([from_none, lambda x: from_list(lambda x: to_class(Item, x), x)], self.related_items)
         result["stock"] = from_union([lambda x: to_class(Stock, x), from_none], self.stock)
         result["tags"] = from_union([lambda x: to_class(Tags, x), from_none], self.tags)
         result["video"] = from_union([lambda x: to_class(Video, x), from_none], self.video)
         return result
 
 
-class ItemType(Enum):
-    ARTICLE = "Article"
-    ECOMMERCE = "Ecommerce"
-    UNKNOWN = "Unknown"
-    VIDEO = "Video"
-
-
 @dataclass
 class ItemDetails:
-    item_id: str
-    item_type: ItemType
+    item: Item
     attributes: Optional[Attributes] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ItemDetails':
         assert isinstance(obj, dict)
-        item_id = from_str(obj.get("item_id"))
-        item_type = ItemType(obj.get("item_type"))
+        item = Item.from_dict(obj.get("item"))
         attributes = from_union([Attributes.from_dict, from_none], obj.get("attributes"))
-        return ItemDetails(item_id, item_type, attributes)
+        return ItemDetails(item, attributes)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["item_id"] = from_str(self.item_id)
-        result["item_type"] = to_enum(ItemType, self.item_type)
+        result["item"] = to_class(Item, self.item)
         result["attributes"] = from_union([lambda x: to_class(Attributes, x), from_none], self.attributes)
         return result
 
@@ -845,59 +862,6 @@ class BuilderVariable(Enum):
     ITEMS_VISITED_COUNTER = "ItemsVisitedCounter"
     ITEM_CURRENT = "ItemCurrent"
     ITEM_CURRENT_TYPE = "ItemCurrentType"
-
-
-@dataclass
-class CategoryPageView:
-    event_type: EventType
-    items: List[ItemDetails]
-    on_screen: bool
-    user_info: UserInfo
-    event_detail: Optional[EventDetail] = None
-    event_time: Optional[int] = None
-    page_categories: Optional[List[str]] = None
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'CategoryPageView':
-        assert isinstance(obj, dict)
-        event_type = EventType(obj.get("event_type"))
-        items = from_list(ItemDetails.from_dict, obj.get("items"))
-        on_screen = from_bool(obj.get("on_screen"))
-        user_info = UserInfo.from_dict(obj.get("user_info"))
-        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        event_time = from_union([from_none, from_int], obj.get("event_time"))
-        page_categories = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("page_categories"))
-        return CategoryPageView(event_type, items, on_screen, user_info, event_detail, event_time, page_categories)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["event_type"] = to_enum(EventType, self.event_type)
-        result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
-        result["on_screen"] = from_bool(self.on_screen)
-        result["user_info"] = to_class(UserInfo, self.user_info)
-        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
-        result["event_time"] = from_union([from_none, from_int], self.event_time)
-        result["page_categories"] = from_union([from_none, lambda x: from_list(from_str, x)], self.page_categories)
-        return result
-
-
-@dataclass
-class Item:
-    item_id: str
-    item_type: ItemType
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'Item':
-        assert isinstance(obj, dict)
-        item_id = from_str(obj.get("item_id"))
-        item_type = ItemType(obj.get("item_type"))
-        return Item(item_id, item_type)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["item_id"] = from_str(self.item_id)
-        result["item_type"] = to_enum(ItemType, self.item_type)
-        return result
 
 
 @dataclass
@@ -1275,40 +1239,6 @@ class ItemRemove:
 
 
 @dataclass
-class ItemsImpression:
-    event_type: EventType
-    items: List[ItemDetails]
-    on_screen: bool
-    user_info: UserInfo
-    event_detail: Optional[EventDetail] = None
-    event_time: Optional[int] = None
-    page_categories: Optional[List[str]] = None
-
-    @staticmethod
-    def from_dict(obj: Any) -> 'ItemsImpression':
-        assert isinstance(obj, dict)
-        event_type = EventType(obj.get("event_type"))
-        items = from_list(ItemDetails.from_dict, obj.get("items"))
-        on_screen = from_bool(obj.get("on_screen"))
-        user_info = UserInfo.from_dict(obj.get("user_info"))
-        event_detail = from_union([EventDetail.from_dict, from_none], obj.get("event_detail"))
-        event_time = from_union([from_none, from_int], obj.get("event_time"))
-        page_categories = from_union([from_none, lambda x: from_list(from_str, x)], obj.get("page_categories"))
-        return ItemsImpression(event_type, items, on_screen, user_info, event_detail, event_time, page_categories)
-
-    def to_dict(self) -> dict:
-        result: dict = {}
-        result["event_type"] = to_enum(EventType, self.event_type)
-        result["items"] = from_list(lambda x: to_class(ItemDetails, x), self.items)
-        result["on_screen"] = from_bool(self.on_screen)
-        result["user_info"] = to_class(UserInfo, self.user_info)
-        result["event_detail"] = from_union([lambda x: to_class(EventDetail, x), from_none], self.event_detail)
-        result["event_time"] = from_union([from_none, from_int], self.event_time)
-        result["page_categories"] = from_union([from_none, lambda x: from_list(from_str, x)], self.page_categories)
-        return result
-
-
-@dataclass
 class ItemsView:
     event_type: EventType
     items: List[ItemDetails]
@@ -1586,29 +1516,182 @@ class LIFOVecForUint128:
 
 
 class GenericStrategy(Enum):
-    ALSO_ADDED_TO_CART = "AlsoAddedToCart"
-    ALSO_PURCHASED = "AlsoPurchased"
-    ALSO_SEEN = "AlsoSeen"
     BESTSELLER_CATEGORY = "BestsellerCategory"
-    BESTSELLER_GLOBAL = "BestsellerGlobal"
-    CONTENT_MATCHING = "ContentMatching"
-    MOST_PURCHASES = "MostPurchases"
-    MOST_VIEWS = "MostViews"
     SEARCH_MATCHING = "SearchMatching"
-    SEEN_IN_SESSION = "SeenInSession"
     SEEN_IN_SESSION_COCCUR_ADDED_TO_CART = "SeenInSessionCoccurAddedToCart"
     SEEN_IN_SESSION_COCCUR_SEEN = "SeenInSessionCoccurSeen"
 
 
 @dataclass
+class ContentItemMatcherStaticParams:
+    item_type: Optional[ItemType] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'ContentItemMatcherStaticParams':
+        assert isinstance(obj, dict)
+        item_type = from_union([from_none, ItemType], obj.get("item_type"))
+        return ContentItemMatcherStaticParams(item_type)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["item_type"] = from_union([from_none, lambda x: to_enum(ItemType, x)], self.item_type)
+        return result
+
+
+@dataclass
+class EventItemTypeItemCooccurenceStaticParams:
+    event_type_a: EventType
+    event_type_b: EventType
+    item_type_a: ItemType
+    item_type_b: ItemType
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'EventItemTypeItemCooccurenceStaticParams':
+        assert isinstance(obj, dict)
+        event_type_a = EventType(obj.get("event_type_a"))
+        event_type_b = EventType(obj.get("event_type_b"))
+        item_type_a = ItemType(obj.get("item_type_a"))
+        item_type_b = ItemType(obj.get("item_type_b"))
+        return EventItemTypeItemCooccurenceStaticParams(event_type_a, event_type_b, item_type_a, item_type_b)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type_a"] = to_enum(EventType, self.event_type_a)
+        result["event_type_b"] = to_enum(EventType, self.event_type_b)
+        result["item_type_a"] = to_enum(ItemType, self.item_type_a)
+        result["item_type_b"] = to_enum(ItemType, self.item_type_b)
+        return result
+
+
+@dataclass
+class EventTypeItemCounterStaticParams:
+    event_type: EventType
+    item_type: ItemType
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'EventTypeItemCounterStaticParams':
+        assert isinstance(obj, dict)
+        event_type = EventType(obj.get("event_type"))
+        item_type = ItemType(obj.get("item_type"))
+        return EventTypeItemCounterStaticParams(event_type, item_type)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["item_type"] = to_enum(ItemType, self.item_type)
+        return result
+
+
+@dataclass
+class OfflineRecommendationsStorageStaticParams:
+    rec_type: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum]
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'OfflineRecommendationsStorageStaticParams':
+        assert isinstance(obj, dict)
+        rec_type = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum], obj.get("rec_type"))
+        return OfflineRecommendationsStorageStaticParams(rec_type)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["rec_type"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x)], self.rec_type)
+        return result
+
+
+class UserInfoType(Enum):
+    SESSION = "SESSION"
+    USER = "USER"
+    VISITOR = "VISITOR"
+
+
+@dataclass
+class EventVisitorItemCounterStaticParams:
+    event_type: EventType
+    item_type: ItemType
+    user_info_type: UserInfoType
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'EventVisitorItemCounterStaticParams':
+        assert isinstance(obj, dict)
+        event_type = EventType(obj.get("event_type"))
+        item_type = ItemType(obj.get("item_type"))
+        user_info_type = UserInfoType(obj.get("user_info_type"))
+        return EventVisitorItemCounterStaticParams(event_type, item_type, user_info_type)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["event_type"] = to_enum(EventType, self.event_type)
+        result["item_type"] = to_enum(ItemType, self.item_type)
+        result["user_info_type"] = to_enum(UserInfoType, self.user_info_type)
+        return result
+
+
+@dataclass
+class SessionItemsCooccurenceStaticParams:
+    """These are strategies that are just using other accumulators to generate candidates. They
+    don't have any internal state
+    
+    The use case is to generate candidates based on the recent user history and event type
+    and item type coocurrences
+    """
+    cooccurence: EventItemTypeItemCooccurenceStaticParams
+    item_generator: EventVisitorItemCounterStaticParams
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'SessionItemsCooccurenceStaticParams':
+        assert isinstance(obj, dict)
+        cooccurence = EventItemTypeItemCooccurenceStaticParams.from_dict(obj.get("cooccurence"))
+        item_generator = EventVisitorItemCounterStaticParams.from_dict(obj.get("item_generator"))
+        return SessionItemsCooccurenceStaticParams(cooccurence, item_generator)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["cooccurence"] = to_class(EventItemTypeItemCooccurenceStaticParams, self.cooccurence)
+        result["item_generator"] = to_class(EventVisitorItemCounterStaticParams, self.item_generator)
+        return result
+
+
+@dataclass
+class ParametrizedStrategy:
+    """Symbolic reference to accumulators instances in the context"""
+    visitor_item_counter: Optional[EventVisitorItemCounterStaticParams] = None
+    item_counter: Optional[EventTypeItemCounterStaticParams] = None
+    item_cooccurences: Optional[EventItemTypeItemCooccurenceStaticParams] = None
+    content_item_matcher: Optional[ContentItemMatcherStaticParams] = None
+    offline_recommendations_storage: Optional[OfflineRecommendationsStorageStaticParams] = None
+    session_based_cooccurence: Optional[SessionItemsCooccurenceStaticParams] = None
+
+    @staticmethod
+    def from_dict(obj: Any) -> 'ParametrizedStrategy':
+        assert isinstance(obj, dict)
+        visitor_item_counter = from_union([EventVisitorItemCounterStaticParams.from_dict, from_none], obj.get("VisitorItemCounter"))
+        item_counter = from_union([EventTypeItemCounterStaticParams.from_dict, from_none], obj.get("ItemCounter"))
+        item_cooccurences = from_union([EventItemTypeItemCooccurenceStaticParams.from_dict, from_none], obj.get("ItemCooccurences"))
+        content_item_matcher = from_union([ContentItemMatcherStaticParams.from_dict, from_none], obj.get("ContentItemMatcher"))
+        offline_recommendations_storage = from_union([OfflineRecommendationsStorageStaticParams.from_dict, from_none], obj.get("OfflineRecommendationsStorage"))
+        session_based_cooccurence = from_union([SessionItemsCooccurenceStaticParams.from_dict, from_none], obj.get("SessionBasedCooccurence"))
+        return ParametrizedStrategy(visitor_item_counter, item_counter, item_cooccurences, content_item_matcher, offline_recommendations_storage, session_based_cooccurence)
+
+    def to_dict(self) -> dict:
+        result: dict = {}
+        result["VisitorItemCounter"] = from_union([lambda x: to_class(EventVisitorItemCounterStaticParams, x), from_none], self.visitor_item_counter)
+        result["ItemCounter"] = from_union([lambda x: to_class(EventTypeItemCounterStaticParams, x), from_none], self.item_counter)
+        result["ItemCooccurences"] = from_union([lambda x: to_class(EventItemTypeItemCooccurenceStaticParams, x), from_none], self.item_cooccurences)
+        result["ContentItemMatcher"] = from_union([lambda x: to_class(ContentItemMatcherStaticParams, x), from_none], self.content_item_matcher)
+        result["OfflineRecommendationsStorage"] = from_union([lambda x: to_class(OfflineRecommendationsStorageStaticParams, x), from_none], self.offline_recommendations_storage)
+        result["SessionBasedCooccurence"] = from_union([lambda x: to_class(SessionItemsCooccurenceStaticParams, x), from_none], self.session_based_cooccurence)
+        return result
+
+
+@dataclass
 class SuccessTriesClass:
-    """Pre-defined strategies
+    """Parametrized strategies
+    
+    Pre-defined strategies
     
     Build your custom strategies
-    
-    Similar description, image or other defined by you
     """
-    similarities: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum, None]
+    parametrized: Optional[ParametrizedStrategy] = None
     generic: Optional[GenericStrategy] = None
     strategy_builder: Optional[str] = None
     n_impressions: Optional[int] = None
@@ -1617,16 +1700,16 @@ class SuccessTriesClass:
     @staticmethod
     def from_dict(obj: Any) -> 'SuccessTriesClass':
         assert isinstance(obj, dict)
-        similarities = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum, from_none], obj.get("Similarities"))
+        parametrized = from_union([ParametrizedStrategy.from_dict, from_none], obj.get("Parametrized"))
         generic = from_union([GenericStrategy, from_none], obj.get("Generic"))
         strategy_builder = from_union([from_str, from_none], obj.get("StrategyBuilder"))
         n_impressions = from_union([from_int, from_none], obj.get("n_impressions"))
         n_success = from_union([from_int, from_none], obj.get("n_success"))
-        return SuccessTriesClass(similarities, generic, strategy_builder, n_impressions, n_success)
+        return SuccessTriesClass(parametrized, generic, strategy_builder, n_impressions, n_success)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["Similarities"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x), from_none], self.similarities)
+        result["Parametrized"] = from_union([lambda x: to_class(ParametrizedStrategy, x), from_none], self.parametrized)
         result["Generic"] = from_union([lambda x: to_enum(GenericStrategy, x), from_none], self.generic)
         result["StrategyBuilder"] = from_union([from_str, from_none], self.strategy_builder)
         result["n_impressions"] = from_union([from_int, from_none], self.n_impressions)
@@ -1681,28 +1764,28 @@ class StrategySelectorStrategyChooseOne(Enum):
 
 
 @dataclass
-class StrategyGenericStrategies:
-    """Pre-defined strategies
+class StrategyDynamicStrategies:
+    """Parametrized strategies
+    
+    Pre-defined strategies
     
     Build your custom strategies
-    
-    Similar description, image or other defined by you
     """
-    similarities: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum, None]
+    parametrized: Optional[ParametrizedStrategy] = None
     generic: Optional[GenericStrategy] = None
     strategy_builder: Optional[str] = None
 
     @staticmethod
-    def from_dict(obj: Any) -> 'StrategyGenericStrategies':
+    def from_dict(obj: Any) -> 'StrategyDynamicStrategies':
         assert isinstance(obj, dict)
-        similarities = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum, from_none], obj.get("Similarities"))
+        parametrized = from_union([ParametrizedStrategy.from_dict, from_none], obj.get("Parametrized"))
         generic = from_union([GenericStrategy, from_none], obj.get("Generic"))
         strategy_builder = from_union([from_str, from_none], obj.get("StrategyBuilder"))
-        return StrategyGenericStrategies(similarities, generic, strategy_builder)
+        return StrategyDynamicStrategies(parametrized, generic, strategy_builder)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["Similarities"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x), from_none], self.similarities)
+        result["Parametrized"] = from_union([lambda x: to_class(ParametrizedStrategy, x), from_none], self.parametrized)
         result["Generic"] = from_union([lambda x: to_enum(GenericStrategy, x), from_none], self.generic)
         result["StrategyBuilder"] = from_union([from_str, from_none], self.strategy_builder)
         return result
@@ -1710,19 +1793,19 @@ class StrategyGenericStrategies:
 
 @dataclass
 class WeightedGenericCandidateRec:
-    strategy: Union[StrategyGenericStrategies, StrategyEnum]
+    strategy: Union[StrategyDynamicStrategies, StrategyEnum]
     weight: Optional[float] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'WeightedGenericCandidateRec':
         assert isinstance(obj, dict)
-        strategy = from_union([StrategyGenericStrategies.from_dict, StrategyEnum], obj.get("strategy"))
+        strategy = from_union([StrategyDynamicStrategies.from_dict, StrategyEnum], obj.get("strategy"))
         weight = from_union([from_none, from_float], obj.get("weight"))
         return WeightedGenericCandidateRec(strategy, weight)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["strategy"] = from_union([lambda x: to_class(StrategyGenericStrategies, x), lambda x: to_enum(StrategyEnum, x)], self.strategy)
+        result["strategy"] = from_union([lambda x: to_class(StrategyDynamicStrategies, x), lambda x: to_enum(StrategyEnum, x)], self.strategy)
         result["weight"] = from_union([from_none, to_float], self.weight)
         return result
 
@@ -1847,28 +1930,28 @@ class RateItem:
 
 
 @dataclass
-class StrategiesUsedGenericStrategies:
-    """Pre-defined strategies
+class StrategiesUsedDynamicStrategies:
+    """Parametrized strategies
+    
+    Pre-defined strategies
     
     Build your custom strategies
-    
-    Similar description, image or other defined by you
     """
-    similarities: Union[OfflineRecommendationsTypeClass, OfflineRecommendationsTypeEnum, None]
+    parametrized: Optional[ParametrizedStrategy] = None
     generic: Optional[GenericStrategy] = None
     strategy_builder: Optional[str] = None
 
     @staticmethod
-    def from_dict(obj: Any) -> 'StrategiesUsedGenericStrategies':
+    def from_dict(obj: Any) -> 'StrategiesUsedDynamicStrategies':
         assert isinstance(obj, dict)
-        similarities = from_union([OfflineRecommendationsTypeClass.from_dict, OfflineRecommendationsTypeEnum, from_none], obj.get("Similarities"))
+        parametrized = from_union([ParametrizedStrategy.from_dict, from_none], obj.get("Parametrized"))
         generic = from_union([GenericStrategy, from_none], obj.get("Generic"))
         strategy_builder = from_union([from_str, from_none], obj.get("StrategyBuilder"))
-        return StrategiesUsedGenericStrategies(similarities, generic, strategy_builder)
+        return StrategiesUsedDynamicStrategies(parametrized, generic, strategy_builder)
 
     def to_dict(self) -> dict:
         result: dict = {}
-        result["Similarities"] = from_union([lambda x: to_class(OfflineRecommendationsTypeClass, x), lambda x: to_enum(OfflineRecommendationsTypeEnum, x), from_none], self.similarities)
+        result["Parametrized"] = from_union([lambda x: to_class(ParametrizedStrategy, x), from_none], self.parametrized)
         result["Generic"] = from_union([lambda x: to_enum(GenericStrategy, x), from_none], self.generic)
         result["StrategyBuilder"] = from_union([from_str, from_none], self.strategy_builder)
         return result
@@ -1880,9 +1963,9 @@ class ItemDetailsRecoShow:
     attributes: Attributes
     item: Item
     rec_id: str
-    strategy_selected: Union[StrategyGenericStrategies, StrategyEnum]
+    strategy_selected: Union[StrategyDynamicStrategies, StrategyEnum]
     score: Optional[float] = None
-    strategies_used: Optional[List[List[Union[StrategiesUsedGenericStrategies, float, StrategyEnum]]]] = None
+    strategies_used: Optional[List[List[Union[StrategiesUsedDynamicStrategies, float, StrategyEnum]]]] = None
 
     @staticmethod
     def from_dict(obj: Any) -> 'ItemDetailsRecoShow':
@@ -1890,9 +1973,9 @@ class ItemDetailsRecoShow:
         attributes = Attributes.from_dict(obj.get("attributes"))
         item = Item.from_dict(obj.get("item"))
         rec_id = from_str(obj.get("rec_id"))
-        strategy_selected = from_union([StrategyGenericStrategies.from_dict, StrategyEnum], obj.get("strategy_selected"))
+        strategy_selected = from_union([StrategyDynamicStrategies.from_dict, StrategyEnum], obj.get("strategy_selected"))
         score = from_union([from_none, from_float], obj.get("score"))
-        strategies_used = from_union([from_none, lambda x: from_list(lambda x: from_list(lambda x: from_union([StrategiesUsedGenericStrategies.from_dict, from_float, StrategyEnum], x), x), x)], obj.get("strategies_used"))
+        strategies_used = from_union([from_none, lambda x: from_list(lambda x: from_list(lambda x: from_union([StrategiesUsedDynamicStrategies.from_dict, from_float, StrategyEnum], x), x), x)], obj.get("strategies_used"))
         return ItemDetailsRecoShow(attributes, item, rec_id, strategy_selected, score, strategies_used)
 
     def to_dict(self) -> dict:
@@ -1900,9 +1983,9 @@ class ItemDetailsRecoShow:
         result["attributes"] = to_class(Attributes, self.attributes)
         result["item"] = to_class(Item, self.item)
         result["rec_id"] = from_str(self.rec_id)
-        result["strategy_selected"] = from_union([lambda x: to_class(StrategyGenericStrategies, x), lambda x: to_enum(StrategyEnum, x)], self.strategy_selected)
+        result["strategy_selected"] = from_union([lambda x: to_class(StrategyDynamicStrategies, x), lambda x: to_enum(StrategyEnum, x)], self.strategy_selected)
         result["score"] = from_union([from_none, to_float], self.score)
-        result["strategies_used"] = from_union([from_none, lambda x: from_list(lambda x: from_list(lambda x: from_union([lambda x: to_class(StrategiesUsedGenericStrategies, x), to_float, lambda x: to_enum(StrategyEnum, x)], x), x), x)], self.strategies_used)
+        result["strategies_used"] = from_union([from_none, lambda x: from_list(lambda x: from_list(lambda x: from_union([lambda x: to_class(StrategiesUsedDynamicStrategies, x), to_float, lambda x: to_enum(StrategyEnum, x)], x), x), x)], self.strategies_used)
         return result
 
 
@@ -2638,14 +2721,6 @@ def builder_variable_to_dict(x: BuilderVariable) -> Any:
     return to_enum(BuilderVariable, x)
 
 
-def category_page_view_from_dict(s: Any) -> CategoryPageView:
-    return CategoryPageView.from_dict(s)
-
-
-def category_page_view_to_dict(x: CategoryPageView) -> Any:
-    return to_class(CategoryPageView, x)
-
-
 def change_item_stock_state_from_dict(s: Any) -> ChangeItemStockState:
     return ChangeItemStockState.from_dict(s)
 
@@ -2708,14 +2783,6 @@ def item_remove_from_dict(s: Any) -> ItemRemove:
 
 def item_remove_to_dict(x: ItemRemove) -> Any:
     return to_class(ItemRemove, x)
-
-
-def items_impression_from_dict(s: Any) -> ItemsImpression:
-    return ItemsImpression.from_dict(s)
-
-
-def items_impression_to_dict(x: ItemsImpression) -> Any:
-    return to_class(ItemsImpression, x)
 
 
 def items_view_from_dict(s: Any) -> ItemsView:
